@@ -1,11 +1,23 @@
 using Microsoft.EntityFrameworkCore;
 using Pikaante_Backend.Data;
 
+var myAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Ajout de l'appel CORS. 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: myAllowSpecificOrigins,
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200")
+                .AllowAnyHeader()      // AVEC QUELS en-têtes (Content-Type, Authorization…)
+                .AllowAnyMethod();     // AVEC QUELLES méthodes (GET, POST, PUT, DELETE…)
+        });
+});
 
 // Base de données : AppDbContext utilise SQLite, avec la chaîne "DefaultConnection"
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -20,6 +32,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseCors(myAllowSpecificOrigins);
 
 app.Run();
