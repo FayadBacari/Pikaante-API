@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Pikaante_Backend.Models;
 using Pikaante_Backend.Data;
 
 var myAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -24,7 +25,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
+// Compte hériter de la class IdentityUser
+builder.Services.AddIdentityApiEndpoints<Person>()
+    .AddEntityFrameworkStores<AppDbContext>();
+
+// Enregistre la vérification des droits, utilisée par app.UseAuthorization()
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
+
+app.UseAuthentication();   // Lit le jeton 
+app.UseAuthorization();    // Vérifie les droits
+
+// Les routes Register, Login, Refresh
+app.MapGroup("/api/comptes").MapIdentityApi<Person>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
