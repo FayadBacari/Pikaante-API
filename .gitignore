@@ -3,3 +3,8 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# Base de données SQLite : elle se recrée avec "dotnet ef database update"
+*.db
+*.db-shm
+*.db-wal
