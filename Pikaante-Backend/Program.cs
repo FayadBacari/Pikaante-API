@@ -43,6 +43,8 @@ builder.Services.AddIdentityApiEndpoints<Person>(options =>
     })
     .AddEntityFrameworkStores<AppDbContext>();
 
+// Active-les controllers (AuthController…)
+builder.Services.AddControllers();
 
 // Enregistre la vérification des droits, utilisée par app.UseAuthorization()
 builder.Services.AddAuthorization();
@@ -56,6 +58,7 @@ app.UseAuthorization();    // Vérifie les droits
 
 // Les routes Register, Login, Refresh
 app.MapGroup("/api/auth").MapIdentityApi<Person>();
+app.MapControllers();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
