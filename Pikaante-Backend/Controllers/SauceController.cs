@@ -194,6 +194,53 @@ public class SauceController(ISauceRepository repository, IWebHostEnvironment en
         return Ok(new { message = "Sauce supprimée !" });
     }
 
+    // POST /api/sauces/5/like : liker (1), annuler son vote (0) ou disliker (-1)
+    [HttpPost("{id:int}/like")]
+    public async Task<IActionResult> Like(int id, [FromBody] LikeDto dto)
+    {
+        // Seules trois valeurs sont acceptées
+        if (dto.Like is not (1 or 0 or -1))
+        {
+            return BadRequest(new { message = "La valeur de like doit être 1, 0 ou -1." });
+        }
+
+        var sauce = await repository.GetByIdAsync(id);
+        if (sauce is null)
+        {
+            return NotFound(new { message = "Sauce introuvable." });
+        }
+
+        var userId = CurrentUserId;
+
+        // 1. On efface l'ancien vote, quel qu'il soit : une seule voix par personne et par sauce
+        sauce.UsersLiked.RemoveAll(user => user == userId);
+        sauce.UsersDisliked.RemoveAll(user => user == userId);
+
+        // 2. On ajoute le nouveau vote (0 = plus de vote : rien à ajouter)
+        if (dto.Like == 1)
+        {
+            sauce.UsersLiked.Add(userId);
+        }
+        else if (dto.Like == -1)
+        {
+            sauce.UsersDisliked.Add(userId);
+        }
+
+        // 3. Les compteurs sont recalculés à partir des listes : ils ne peuvent pas se décaler
+        sauce.Likes = sauce.UsersLiked.Count;
+        sauce.Dislikes = sauce.UsersDisliked.Count;
+
+        await repository.UpdateAsync(sauce);
+
+        var message = dto.Like switch
+        {
+            1 => "Like ajouté !",
+            -1 => "Dislike ajouté !",
+            _ => "Vote annulé."
+        };
+        return Ok(new { message });
+    }
+
     // L'identifiant de l'utilisateur connecté, lu dans le jeton (comme dans /api/auth/me)
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
 
