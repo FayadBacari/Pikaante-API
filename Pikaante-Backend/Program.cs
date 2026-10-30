@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Pikaante_Backend.Models;
 using Pikaante_Backend.Data;
+using Pikaante_Backend.Repository;
 
 var myAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,9 @@ builder.Services.AddCors(options =>
 // Ajout de AppDbdContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Quand un controller demande un ISauceRepository, ASP.NET lui donne un SauceRepository
+builder.Services.AddScoped<ISauceRepository, SauceRepository>();
 
 
 // Compte hériter de la class IdentityUser
