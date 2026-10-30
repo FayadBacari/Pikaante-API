@@ -94,6 +94,30 @@ public class SauceController(ISauceRepository repository, IWebHostEnvironment en
         return StatusCode(StatusCodes.Status201Created, new { message = "Sauce enregistrée !" });
     }
 
+    // DELETE /api/sauces/5 : supprimer une sauce et son image (créateur uniquement)
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var sauce = await repository.GetByIdAsync(id);
+        if (sauce is null)
+        {
+            return NotFound(new { message = "Sauce introuvable." });
+        }
+
+        // Seul le créateur peut supprimer sa sauce : on compare avec l'identifiant lu dans le jeton
+        if (sauce.UserId != CurrentUserId)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Seul le créateur de la sauce peut la supprimer." });
+        }
+
+        await repository.DeleteAsync(sauce);
+
+        // L'image est effacée après la base : si la suppression en base échoue, l'image reste
+        DeleteImage(sauce.ImageUrl);
+
+        return Ok(new { message = "Sauce supprimée !" });
+    }
+
     // L'identifiant de l'utilisateur connecté, lu dans le jeton (comme dans /api/auth/me)
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
 
@@ -189,5 +213,18 @@ public class SauceController(ISauceRepository repository, IWebHostEnvironment en
 
         // Par exemple : http://localhost:3000/images/0b8e1c2a-….jpg
         return $"{Request.Scheme}://{Request.Host}/images/{fileName}";
+    }
+
+    // Supprime le fichier d'une image à partir de son adresse
+    private void DeleteImage(string imageUrl)
+    {
+        // GetFileName garde seulement le nom du fichier : impossible de sortir du dossier images
+        var fileName = Path.GetFileName(imageUrl);
+        var path = Path.Combine(ImagesFolder, fileName);
+
+        if (!string.IsNullOrEmpty(fileName) && System.IO.File.Exists(path))
+        {
+            System.IO.File.Delete(path);
+        }
     }
 }
