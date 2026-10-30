@@ -51,6 +51,23 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Middleware d'ajout d'image 
+app.UseExceptionHandler(errorApp =>
+{
+    // Ce bloc ne s'exécute que lorsqu'une erreur n'a été rattrapée nulle part
+    errorApp.Run(async context =>
+    {
+        // Statut 500 = « erreur du serveur »
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+        // Réponse au format des spécifications { "message" "..." }, sans détail technique.
+        // Le détail de l'erreur reste affiché dans la console de Rider, pour toi.
+        await context.Response.WriteAsJsonAsync(new { message = "Une erreur inattendue est survenue. Réessayez plus tard." });
+    });
+});
+app.UseStaticFiles();
+
+
 app.UseCors(myAllowSpecificOrigins);
 app.UseAuthentication();   // Lit le jeton 
 app.UseAuthorization();    // Vérifie les droits

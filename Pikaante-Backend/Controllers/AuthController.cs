@@ -7,7 +7,7 @@ namespace Pikaante_Backend.Controllers;
 
 [ApiController]
 
-//le DÉBUT de l'adresse de toutes les routes de cette classe
+//le début de l'adresse de toutes les routes de cette classe
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
