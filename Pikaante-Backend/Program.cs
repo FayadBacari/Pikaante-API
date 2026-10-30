@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pikaante_Backend.Models;
 using Pikaante_Backend.Data;
 using Pikaante_Backend.Repository;
+using Pikaante_Backend.Services;
 
 var myAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
@@ -46,7 +47,9 @@ builder.Services.AddIdentityApiEndpoints<Person>(options =>
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     })
-    .AddEntityFrameworkStores<AppDbContext>();
+    .AddEntityFrameworkStores<AppDbContext>()
+    // Messages d'erreur d'Identity en français (le front les affiche tels quels)
+    .AddErrorDescriber<FrenchIdentityErrorDescriber>();
 
 // Active-les controllers (AuthController…)
 builder.Services.AddControllers()

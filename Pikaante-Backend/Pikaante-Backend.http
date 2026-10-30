@@ -1,6 +1,136 @@
-@Pikaante_Backend_HostAddress = http://localhost:5062
+# Tests de l'API Hot Takes, à lancer dans l'ordre depuis Rider (bouton ▶ à gauche de chaque ###).
+# L'API doit tourner sur http://localhost:3000.
+# Compte de test local uniquement : il est créé par la requête 1, dans ta base SQLite.
 
-GET {{Pikaante_Backend_HostAddress}}/weatherforecast/
-Accept: application/json
+@host = http://localhost:3000
+@email = paula@piiquante.test
+@password = Piquant-Test-2026
 
-###
+### 1. Inscription → 200 (ou 400 « déjà utilisée » si le compte existe)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}" }
+
+### 2. Connexion → 200 + jetons, gardés pour les requêtes suivantes
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}" }
+
+> {%
+    client.global.set("token", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### 3. Qui suis-je ? → 200 + { userId, email }
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 4. Renouveler les jetons → 200 + nouveaux jetons
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{refreshToken}}" }
+
+> {%
+    client.global.set("token", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### 5. Créer une sauce avec son image → 201
+POST {{host}}/api/sauces
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=Limite
+
+--Limite
+Content-Disposition: form-data; name="sauce"
+
+{"name":"Feu de Cayenne","manufacturer":"La Fabrique Piquante","description":"Une sauce fumée au piment de Cayenne.","mainPepper":"Cayenne","heat":6}
+--Limite
+Content-Disposition: form-data; name="image"; filename="sauce-test.png"
+Content-Type: image/png
+
+< ./TestFiles/sauce-test.png
+--Limite--
+
+### 6. Lister les sauces → 200 ; l'id de la dernière sauce est gardé
+GET {{host}}/api/sauces
+Authorization: Bearer {{token}}
+
+> {%
+    client.global.set("sauceId", response.body[response.body.length - 1]._id);
+%}
+
+### 7. Lire une sauce → 200
+GET {{host}}/api/sauces/{{sauceId}}
+Authorization: Bearer {{token}}
+
+### 8. Modifier sans image (JSON) → 200
+PUT {{host}}/api/sauces/{{sauceId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"name":"Feu de Cayenne (modifiée)","manufacturer":"La Fabrique Piquante","description":"Encore plus fumée.","mainPepper":"Cayenne","heat":7}
+
+### 9. Modifier avec une nouvelle image (formulaire) → 200, l'ancienne image est supprimée
+PUT {{host}}/api/sauces/{{sauceId}}
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=Limite
+
+--Limite
+Content-Disposition: form-data; name="sauce"
+
+{"name":"Feu de Cayenne (nouvelle image)","manufacturer":"La Fabrique Piquante","description":"Encore plus fumée.","mainPepper":"Cayenne","heat":7}
+--Limite
+Content-Disposition: form-data; name="image"; filename="sauce-test.png"
+Content-Type: image/png
+
+< ./TestFiles/sauce-test.png
+--Limite--
+
+### 10. Liker → 200 « Like ajouté ! »
+POST {{host}}/api/sauces/{{sauceId}}/like
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "like": 1 }
+
+### 11. Disliker → 200 « Dislike ajouté ! » (le like est retiré)
+POST {{host}}/api/sauces/{{sauceId}}/like
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "like": -1 }
+
+### 12. Annuler son vote → 200 « Vote annulé. »
+POST {{host}}/api/sauces/{{sauceId}}/like
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "like": 0 }
+
+### 13. ERREUR attendue : valeur de like inconnue → 400
+POST {{host}}/api/sauces/{{sauceId}}/like
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "like": 2 }
+
+### 14. ERREUR attendue : piquant hors limites → 400
+PUT {{host}}/api/sauces/{{sauceId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"name":"Trop forte","manufacturer":"Fab","description":"Desc","mainPepper":"Carolina Reaper","heat":11}
+
+### 15. ERREUR attendue : sans jeton → 401
+GET {{host}}/api/sauces
+
+### 16. ERREUR attendue : sauce inexistante → 404
+GET {{host}}/api/sauces/999999
+Authorization: Bearer {{token}}
+
+### 17. Supprimer la sauce → 200, son image est supprimée aussi
+DELETE {{host}}/api/sauces/{{sauceId}}
+Authorization: Bearer {{token}}
