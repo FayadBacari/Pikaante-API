@@ -1,6 +1,5 @@
 bin/
 obj/
-wwwroot/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
@@ -9,3 +8,8 @@ riderModule.iml
 *.db
 *.db-shm
 *.db-wal
+
+# Images envoyées par les utilisateurs : jamais sur GitHub.
+# Le fichier vide .gitkeep est gardé, pour que le dossier existe chez un autre développeur.
+**/wwwroot/images/*
+!**/wwwroot/images/.gitkeep
