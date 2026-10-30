@@ -94,6 +94,82 @@ public class SauceController(ISauceRepository repository, IWebHostEnvironment en
         return StatusCode(StatusCodes.Status201Created, new { message = "Sauce enregistrée !" });
     }
 
+    // PUT /api/sauces/5 sans nouvelle image : la sauce arrive en JSON dans le corps de la requête.
+    // Deux actions ont la même adresse : [Consumes] dit à ASP.NET laquelle choisir,
+    // selon ce que le front envoie (du JSON ici, un formulaire dans UpdateWithImage).
+    [HttpPut("{id:int}")]
+    [Consumes("application/json")]
+    public async Task<IActionResult> Update(int id, [FromBody] SauceDto dto)
+    {
+        var existing = await repository.GetByIdAsync(id);
+        if (existing is null)
+        {
+            return NotFound(new { message = "Sauce introuvable." });
+        }
+
+        if (existing.UserId != CurrentUserId)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Seul le créateur de la sauce peut la modifier." });
+        }
+
+        var error = ValidateSauce(dto);
+        if (error is not null)
+        {
+            return BadRequest(new { message = error });
+        }
+
+        // Les champs sont copiés sur la sauce EXISTANTE : son id, son image et ses likes ne bougent pas
+        CopyFields(dto, existing);
+        await repository.UpdateAsync(existing);
+
+        return Ok(new { message = "Sauce modifiée !" });
+    }
+
+    // PUT /api/sauces/5 avec une nouvelle image : un formulaire sauce + image, comme pour la création
+    [HttpPut("{id:int}")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdateWithImage(int id, [FromForm] string? sauce, IFormFile? image)
+    {
+        var existing = await repository.GetByIdAsync(id);
+        if (existing is null)
+        {
+            return NotFound(new { message = "Sauce introuvable." });
+        }
+
+        if (existing.UserId != CurrentUserId)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Seul le créateur de la sauce peut la modifier." });
+        }
+
+        if (image is null)
+        {
+            return BadRequest(new { message = "L'image est obligatoire." });
+        }
+
+        var dto = ReadSauce(sauce);
+        if (dto is null)
+        {
+            return BadRequest(new { message = "Les informations de la sauce sont manquantes ou mal formées." });
+        }
+
+        var error = ValidateSauce(dto) ?? ValidateImage(image);
+        if (error is not null)
+        {
+            return BadRequest(new { message = error });
+        }
+
+        // La nouvelle image remplace l'ancienne
+        var oldImageUrl = existing.ImageUrl;
+        existing.ImageUrl = await SaveImageAsync(image);
+        CopyFields(dto, existing);
+        await repository.UpdateAsync(existing);
+
+        // L'ancien fichier est effacé une fois la base à jour
+        DeleteImage(oldImageUrl);
+
+        return Ok(new { message = "Sauce modifiée !" });
+    }
+
     // DELETE /api/sauces/5 : supprimer une sauce et son image (créateur uniquement)
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)

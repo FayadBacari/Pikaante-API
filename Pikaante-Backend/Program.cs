@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pikaante_Backend.Models;
 using Pikaante_Backend.Data;
@@ -48,7 +49,13 @@ builder.Services.AddIdentityApiEndpoints<Person>(options =>
     .AddEntityFrameworkStores<AppDbContext>();
 
 // Active-les controllers (AuthController…)
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Données illisibles (JSON mal formé, mauvais type…) : 400 + { "message": "..." }, sans détail technique
+        options.InvalidModelStateResponseFactory = _ =>
+            new BadRequestObjectResult(new { message = "Les données envoyées sont invalides." });
+    });
 
 // Enregistre la vérification des droits, utilisée par app.UseAuthorization()
 builder.Services.AddAuthorization();
